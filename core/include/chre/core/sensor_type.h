@@ -56,6 +56,8 @@ enum class SensorType {
   UncalibratedGeomagneticField,
 
   VendorType0,
+  VendorType1,
+  VendorType2,
 
   // Note to future developers: don't forget to update the implementation of
   // 1) getSensorTypeName,
@@ -81,6 +83,8 @@ enum class SensorSampleType {
   Occurrence,
   ThreeAxis,
   Vendor0,
+  Vendor1,
+  Vendor2,
   Unknown,
 };
 
