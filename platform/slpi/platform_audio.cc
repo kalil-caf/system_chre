@@ -19,6 +19,7 @@
 #include <cstring>
 
 #include "chre/core/event_loop_manager.h"
+#include "chre/platform/host_link.h"
 #include "chre/platform/log.h"
 #include "chre/util/memory.h"
 #include "wcd_spi.h"
@@ -81,13 +82,35 @@ void handleWcdSpiAudioAvailability(uint32_t handle, bool available) {
 
 }  // anonymous namespace
 
-PlatformAudio::PlatformAudio() {
+PlatformAudio::PlatformAudio() {}
+
+PlatformAudio::~PlatformAudio() {
+  wcd_spi_client_deinit();
+}
+
+void PlatformAudio::init() {
   wcd_spi_client_init(handleWcdSpiAudioDataEvent,
                       handleWcdSpiAudioAvailability);
 }
 
-PlatformAudio::~PlatformAudio() {
-  wcd_spi_client_deinit();
+void PlatformAudio::setHandleEnabled(uint32_t handle, bool enabled) {
+  uint32_t lastNumAudioClients = mNumAudioClients;
+
+  if (enabled) {
+    mNumAudioClients++;
+  } else if (mNumAudioClients > 0) {
+    mNumAudioClients--;
+  } else {
+    LOGE("Invalid request to change handle enabled state");
+  }
+
+  if (lastNumAudioClients == 0 && mNumAudioClients > 0) {
+    LOGD("Enabling WCD SLPI");
+    sendAudioRequest();
+  } else if (lastNumAudioClients > 0 && mNumAudioClients == 0) {
+    LOGD("Disabling WCD SLPI");
+    sendAudioRelease();
+  }
 }
 
 bool PlatformAudio::requestAudioDataEvent(uint32_t handle,
@@ -98,11 +121,11 @@ bool PlatformAudio::requestAudioDataEvent(uint32_t handle,
 }
 
 void PlatformAudio::cancelAudioDataEventRequest(uint32_t handle) {
-  // TODO(P1-f3f9a0): Implement this.
+  wcd_spi_client_cancel_audio_data_event(handle);
 }
 
 void PlatformAudio::releaseAudioDataEvent(struct chreAudioDataEvent *event) {
-  // TODO: Notify the platform of this event.
+  wcd_spi_client_release_audio_data_event(event->handle);
   memoryFree(event);
 }
 

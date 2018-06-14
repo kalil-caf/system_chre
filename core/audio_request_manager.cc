@@ -49,6 +49,10 @@ AudioRequestManager::AudioRequestManager() {
   }
 }
 
+void AudioRequestManager::init() {
+  mPlatformAudio.init();
+}
+
 bool AudioRequestManager::configureSource(const Nanoapp *nanoapp,
                                           uint32_t handle,
                                           bool enable,
@@ -63,12 +67,15 @@ bool AudioRequestManager::configureSource(const Nanoapp *nanoapp,
                                           &requestIndex);
     Nanoseconds nextEventTimestamp = SystemTime::getMonotonicTime()
         + Nanoseconds(deliveryInterval);
+    size_t lastNumRequests = mAudioRequestLists[handle].requests.size();
     if (audioRequest == nullptr) {
       // The nanoapp is making a new request for audio data.
       if (enable) {
         mAudioRequestLists[handle].requests.emplace_back(
             nanoapp->getInstanceId(), numSamples,
             Nanoseconds(deliveryInterval), nextEventTimestamp);
+        postAudioSamplingChangeEvent(nanoapp->getInstanceId(), handle,
+                                     mAudioRequestLists[handle].available);
         scheduleNextAudioDataEvent(handle);
       } else {
         LOGW("Nanoapp disabling nonexistent audio request");
@@ -87,6 +94,13 @@ bool AudioRequestManager::configureSource(const Nanoapp *nanoapp,
       // necessary. The expectation is that the platform will gracefully handle
       // rescheduling the same request.
       scheduleNextAudioDataEvent(handle);
+    }
+
+    size_t numRequests = mAudioRequestLists[handle].requests.size();
+    if (lastNumRequests == 0 && numRequests > 0) {
+      mPlatformAudio.setHandleEnabled(handle, true);
+    } else if (lastNumRequests > 0 && numRequests == 0) {
+      mPlatformAudio.setHandleEnabled(handle, false);
     }
   }
 
@@ -222,12 +236,7 @@ void AudioRequestManager::handleAudioAvailabilitySync(uint32_t handle,
                                                       bool available) {
   if (handle < mAudioRequestLists.size()) {
     mAudioRequestLists[handle].available = available;
-    if (available) {
-      // TODO: Post an event to the nanoapps.
-    } else {
-      // TODO: Post an event to the nanoapps.
-    }
-
+    postAudioSamplingChangeEvents(handle, available);
     scheduleNextAudioDataEvent(handle);
   } else {
     LOGE("Audio availability handle out of range: %" PRIu32, handle);
@@ -252,9 +261,28 @@ void AudioRequestManager::scheduleNextAudioDataEvent(uint32_t handle) {
   }
 }
 
+void AudioRequestManager::postAudioSamplingChangeEvents(uint32_t handle,
+                                                        bool available) {
+  for (const auto& request : mAudioRequestLists[handle].requests) {
+    postAudioSamplingChangeEvent(request.instanceId, handle, available);
+  }
+}
+
+void AudioRequestManager::postAudioSamplingChangeEvent(uint32_t instanceId,
+                                                       uint32_t handle,
+                                                       bool available) {
+  auto *event = memoryAlloc<struct chreAudioSourceStatusEvent>();
+  event->handle = handle;
+  event->status.enabled = true;
+  event->status.suspended = !available;
+
+  EventLoopManagerSingleton::get()->getEventLoop()
+      .postEvent(CHRE_EVENT_AUDIO_SAMPLING_CHANGE, event,
+                 freeEventDataCallback, kSystemInstanceId, instanceId);
+}
+
 void AudioRequestManager::postAudioDataEventFatal(
     struct chreAudioDataEvent *event, uint32_t instanceId) {
-  // TODO: Ensure that audio data is delimited by audio change events.
   EventLoopManagerSingleton::get()->getEventLoop()
       .postEvent(CHRE_EVENT_AUDIO_DATA, event,
                  freeAudioDataEventCallback,

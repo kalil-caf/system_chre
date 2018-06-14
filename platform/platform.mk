@@ -17,9 +17,6 @@ COMMON_SRCS += platform/shared/platform_sensor_util.cc
 
 # SLPI-specific Compiler Flags #################################################
 
-# Define CUST_H to allow including the customer header file.
-SLPI_CFLAGS += -DCUST_H
-
 # Include paths.
 SLPI_CFLAGS += -I$(SLPI_PREFIX)/build/ms
 SLPI_CFLAGS += -I$(SLPI_PREFIX)/build/cust
@@ -59,6 +56,7 @@ SLPI_SMGR_CFLAGS += -DCHRE_SLPI_SMGR
 # SLPI/SEE-specific Compiler Flags #############################################
 
 # Include paths.
+SLPI_SEE_CFLAGS += -I$(SLPI_PREFIX)/chre/chre/src/system/chre/platform/slpi
 SLPI_SEE_CFLAGS += -I$(SLPI_PREFIX)/core/api/kernel/libstd/stringl
 SLPI_SEE_CFLAGS += -I$(SLPI_PREFIX)/qmimsgs/common/api
 SLPI_SEE_CFLAGS += -I$(SLPI_PREFIX)/ssc/framework/cm/inc
@@ -73,6 +71,7 @@ SLPI_SEE_CFLAGS += -I$(SLPI_PREFIX)/ssc/inc/pb
 
 SLPI_SEE_CFLAGS += -DCHRE_SLPI_SEE
 SLPI_SEE_CFLAGS += -DSSC_TARGET_HEXAGON
+SLPI_SEE_CFLAGS += -DSNS_ISLAND_INCLUDE_QCM
 
 # SLPI-specific Source Files ###################################################
 
@@ -99,7 +98,7 @@ SLPI_SRCS += platform/slpi/host_link.cc
 SLPI_SRCS += platform/slpi/init.cc
 SLPI_SRCS += platform/slpi/memory.cc
 SLPI_SRCS += platform/slpi/memory_manager.cc
-SLPI_SRCS += platform/slpi/platform_log.cc
+SLPI_SRCS += platform/slpi/nanoapp_load_manager.cc
 SLPI_SRCS += platform/slpi/platform_nanoapp.cc
 SLPI_SRCS += platform/slpi/platform_pal.cc
 SLPI_SRCS += platform/slpi/preloaded_nanoapps.cc
@@ -108,7 +107,7 @@ SLPI_SRCS += platform/slpi/system_time_util.cc
 SLPI_SRCS += platform/slpi/system_timer.cc
 
 # Optional audio support.
-ifneq ($(CHRE_AUDIO_SUPPORT_ENABLED),)
+ifeq ($(CHRE_AUDIO_SUPPORT_ENABLED), true)
 SLPI_CFLAGS += -I$(SLPI_PREFIX)/ssc/goog/wcd_spi/api
 
 SLPI_SRCS += platform/slpi/platform_audio.cc
@@ -134,6 +133,7 @@ SLPI_SEE_SRCS += platform/slpi/see/power_control_manager.cc
 SLPI_SEE_SRCS += platform/slpi/see/see_helper.cc
 
 SLPI_SEE_SRCS += $(SLPI_PREFIX)/ssc/framework/cm/pb/sns_client.pb.c
+SLPI_SEE_QSK_SRCS += $(SLPI_PREFIX)/ssc/framework/qcm/pb/sns_client_qsocket.pb.c
 SLPI_SEE_SRCS += $(SLPI_PREFIX)/ssc/framework/suid_sensor/pb/sns_suid.pb.c
 SLPI_SEE_SRCS += $(SLPI_PREFIX)/ssc/sensors/pb/sns_cal.pb.c
 SLPI_SEE_SRCS += $(SLPI_PREFIX)/ssc/sensors/pb/sns_physical_sensor_test.pb.c
@@ -142,6 +142,10 @@ SLPI_SEE_SRCS += $(SLPI_PREFIX)/ssc/sensors/pb/sns_remote_proc_state.pb.c
 SLPI_SEE_SRCS += $(SLPI_PREFIX)/ssc/sensors/pb/sns_std.pb.c
 SLPI_SEE_SRCS += $(SLPI_PREFIX)/ssc/sensors/pb/sns_std_sensor.pb.c
 SLPI_SEE_SRCS += $(SLPI_PREFIX)/ssc/sensors/pb/sns_std_type.pb.c
+
+SLPI_SEE_SRCS += $(SLPI_PREFIX)/chre/chre/src/system/chre/platform/slpi/sns_osa.c
+SLPI_SEE_QSK_SRCS += $(SLPI_PREFIX)/chre/chre/src/system/chre/platform/slpi/sns_qsocket_client.c
+SLPI_SEE_QMI_SRCS += $(SLPI_PREFIX)/chre/chre/src/system/chre/platform/slpi/sns_qmi_client.c
 
 # Simulator-specific Compiler Flags ############################################
 
@@ -229,7 +233,7 @@ GOOGLE_ARM64_ANDROID_SRCS += host/common/host_protocol_host.cc
 GOOGLE_ARM64_ANDROID_SRCS += host/common/socket_server.cc
 
 # Optional audio support.
-ifneq ($(CHRE_AUDIO_SUPPORT_ENABLED),)
+ifneq ($(CHRE_AUDIO_SUPPORT_ENABLED), true)
 GOOGLE_ARM64_ANDROID_SRCS += platform/android/platform_audio.cc
 endif
 

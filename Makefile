@@ -21,13 +21,18 @@ OUTPUT_NAME = libchre
 # Symbols required by the runtime for conditional compilation.
 COMMON_CFLAGS += -DCHRE_MINIMUM_LOG_LEVEL=CHRE_LOG_LEVEL_DEBUG
 COMMON_CFLAGS += -DNANOAPP_MINIMUM_LOG_LEVEL=CHRE_LOG_LEVEL_DEBUG
+
+ifneq ($(CHRE_ASSERTIONS_ENABLED), false)
 COMMON_CFLAGS += -DCHRE_ASSERTIONS_ENABLED
+else
+COMMON_CFLAGS += -DCHRE_ASSERTIONS_DISABLED
+endif
 
 # Place nanoapps in a namespace.
 COMMON_CFLAGS += -DCHRE_NANOAPP_INTERNAL
 
 # Optional audio support.
-ifneq ($(CHRE_AUDIO_SUPPORT_ENABLED),)
+ifeq ($(CHRE_AUDIO_SUPPORT_ENABLED), true)
 COMMON_CFLAGS += -DCHRE_AUDIO_SUPPORT_ENABLED
 endif
 
@@ -72,6 +77,7 @@ include $(CHRE_PREFIX)/util/util.mk
 # implementation of CHRE. Example: this CHRE implementation is never built for
 # google_cm4_nanohub as Nanohub itself is a CHRE implementation.
 include $(CHRE_PREFIX)/build/variant/google_arm64_android.mk
+include $(CHRE_PREFIX)/build/variant/google_hexagonv55_slpi-see.mk
 include $(CHRE_PREFIX)/build/variant/google_hexagonv60_slpi.mk
 include $(CHRE_PREFIX)/build/variant/google_hexagonv62_slpi.mk
 include $(CHRE_PREFIX)/build/variant/google_hexagonv62_slpi-uimg.mk
